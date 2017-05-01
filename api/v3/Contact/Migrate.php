@@ -23,13 +23,17 @@ function _civicrm_api3_contact_Migrate_spec(&$spec) {
 function civicrm_api3_contact_Migrate($params) {
   set_time_limit(0);
   $returnValues = array();
-  $entity = 'contact';
+  $entity = 'individual';
   $createCount = 0;
   $logCount = 0;
   $logger = new CRM_Migration_Logger($entity);
-  $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_individual WHERE is_processed = 0 ORDER BY id LIMIT 1000');
+  $limit = 1000;
+  if (isset($params['options']) && isset($params['options']['limit'])) {
+    $limit = $params['options']['limit'];
+  }
+  $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_individual WHERE is_processed = 0 ORDER BY id LIMIT %1', array(1=>array($limit, 'Integer')));
   while ($daoSource->fetch()) {
-    $civiContact = new CRM_Migration_Contact($entity, $daoSource, $logger);
+    $civiContact = new CRM_Migration_Individual($entity, $daoSource, $logger);
     $newContact = $civiContact->migrate();
     if ($newContact == FALSE) {
       $logCount++;
