@@ -28,6 +28,8 @@ class CRM_Migration_Config {
   private $_reservertHumanitOrganisasjonerCustomFieldId = NULL;
   private $_reservertSistOppdatertCustomFieldId = NULL;
 
+  private $_oldContactIdHistoryType = NULL;
+
   /**
    * Constructor method
    *
@@ -136,6 +138,36 @@ class CRM_Migration_Config {
       'custom_group_id' => 'reservasjonsregisteret',
       'return' => 'id',
     ));
+
+    try {
+      $this->_oldContactIdHistoryType = civicrm_api3('OptionValue', 'getvalue', array(
+        'name' => 'original_contact_id',
+        'return' => 'value',
+        'option_group_id' => "contact_id_history_type",
+      ));
+    } catch (Exception $e) {
+      civicrm_api3('OptionValue', 'create', array(
+        'name' => 'original_contact_id',
+        'value' => 'original_contact_id',
+        'label' => 'Original contact ID',
+        'option_group_id' => "contact_id_history_type",
+      ));
+
+      $this->_oldContactIdHistoryType = civicrm_api3('OptionValue', 'getvalue', array(
+        'name' => 'original_contact_id',
+        'return' => 'value',
+        'option_group_id' => "contact_id_history_type",
+      ));
+    }
+  }
+
+  /**
+   * Getter for original contact id type value.
+   *
+   * @return array|null
+   */
+  public function getOriginalContactIdType() {
+    return $this->_oldContactIdHistoryType;
   }
 
   /**

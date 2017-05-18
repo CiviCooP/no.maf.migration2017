@@ -19,6 +19,8 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
       try {
         $apiParams = $this->setApiParams();
         $created = civicrm_api3('Contact', 'create', $apiParams);
+        $this->setCreateDate($created['id']);
+        $this->addIdentity($created['id'], $this->_sourceData['id']);
         $this->addMobile($created['id']);
         $this->addAddress($created['id']);
         $this->addCustomData();
@@ -64,7 +66,17 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
       'is_deleted',
       'created_date',
       'modified_date',
+      'email_greeting_id',
+      'email_greeting_custom',
+      'email_greeting_display',
+      'postal_greeting_id',
+      'postal_greeting_custom',
+      'postal_greeting_display',
+      'addressee_id',
+      'addressee_custom',
+      'addressee_display',
       'address_id',
+      'preferred_communication_method',
       'street_address',
       'street_number',
       'street_number_suffix',
@@ -87,7 +99,8 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
       'reserved_cold_phone',
       'reserved_humantarian_organisations',
       'reserved_last_updated',
-      'primary_contact_for_communication'
+      'primary_contact_for_communication',
+      'date_added'
     );
 
     $apiParams = $this->_sourceData;
@@ -104,6 +117,14 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
       $apiParams['id'] = $this->_sourceData['new_contact_id'];
     }
 
+    $apiParams['preferred_communication_method'] = array();
+    $preferred_communication_method = explode(CRM_Core_DAO::VALUE_SEPARATOR,  $this->_sourceData['preferred_communication_method']);
+    foreach($preferred_communication_method as $value) {
+      if ($value) {
+        $apiParams['preferred_communication_method'][] = $value;
+      }
+    }
+
     $apiParams['custom_'.$config->getPersonnummerCustomFieldId()] = $this->_sourceData['personsnummer'];
     $apiParams['custom_'.$config->getPrimaryContactForCommunicationCustomFieldId()] = $this->_sourceData['primary_contact_for_communication'];
 
@@ -115,8 +136,35 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
     return $apiParams;
   }
 
+  private function addIdentity($contact_id, $original_contact_id) {
+    $config = CRM_Migration_Config::singleton();
+
+    $result = civicrm_api3('Contact', 'findbyidentity', array(
+      'identifier_type' => $config->getOriginalContactIdType(),
+      'identifier' => $original_contact_id,
+    ));
+    if ($result['count'] == 1) {
+      return;
+    }
+
+    $params['contact_id'] = $contact_id;
+    $params['identifier'] = $original_contact_id;
+    $params['identifier_type'] = $config->getOriginalContactIdType();
+    civicrm_api3('Contact', 'addidentity', $params);
+  }
+
+  private function setCreateDate($contact_id) {
+    if (!isset($this->_sourceData['contact_source_date']) || empty($this->_sourceData['contact_source_date'])) {
+      return;
+    }
+    $date_addedd = new DateTime($this->_sourceData['contact_source_date']);
+    $sqlParams[1] = array($date_addedd->format('Y-m-d'), 'String');
+    $sqlParams[2] = array($contact_id, 'Integer');
+    CRM_Core_DAO::executeQuery("UPDATE civicrm_contact SET created_date = %1 WHERE id = %2", $sqlParams);
+  }
+
   private function addMobile($contact_id) {
-    if (isset($this->_sourceData['mobile']) && !empty($this->_sourceData['mobile'])) {
+    if (!isset($this->_sourceData['mobile']) || empty($this->_sourceData['mobile'])) {
       return;
     }
 
@@ -140,7 +188,7 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
     try {
       civicrm_api3('Phone', 'create', $apiParams);
     } catch (Exception $e) {
-      $this->_logger->logMessage('Warning', 'Could not add a mobile for contact '
+      $this->_logger->logMessage('Warning', 'Could not add a mobile (' . $this->_sourceData['mobile'] . ') for contact '
         .$this->_sourceData['display_name'].', mobile ignored. Reason for failing: '.$e->getMessage());
     }
   }
@@ -159,13 +207,44 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
       'postal_code',
     );
 
-    if (isset($this->_sourceData['master_id']) && !empty($this->_sourceData['master_id'])) {
-      $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact '
-        .$this->_sourceData['display_name'].', address ignored');
-      return;
-    }
-
     $apiParams = array();
+
+    if (isset($this->_sourceData['master_id']) && !empty($this->_sourceData['master_id'])) {
+      $master_contact_id = CRM_Core_DAO::singleValueQuery("SELECT id FROM migration_individual WHERE address_id = %1", array(1=>array($this->_sourceData['master_id'], 'Integer')));
+      if (empty($master_contact_id)) {
+        $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact '
+          .$this->_sourceData['display_name'].' and could not find the master address, address ignored');
+        return;
+      }
+      // Find master id
+      $master_contact = civicrm_api3('Contact', 'findbyidentity', array(
+        'identifier_type' => $config->getOriginalContactIdType(),
+        'identifier' => $master_contact_id,
+      ));
+      if ($master_contact['count'] == 1) {
+        $master_contact_id = $master_contact['id'];
+      } else {
+        $master_contact_id = false;
+      }
+
+      if (empty($master_contact_id)) {
+        $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact '
+          .$this->_sourceData['display_name'].' and could not find the master address, address ignored');
+        return;
+      }
+
+      try {
+        $apiParams['master_id'] = civicrm_api3('Address', 'getvalue', array(
+          'contact_id' => $master_contact_id,
+          'is_primary' => 1,
+          'return' => 'id'
+        ));
+      } catch (Exception $e ) {
+        $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact '
+          . $this->_sourceData['display_name'] . ', address ignored');
+        return;
+      }
+    }
 
     foreach($address_fields as $field) {
       if (isset($this->_sourceData[$field]) && !empty($this->_sourceData[$field])) {
@@ -215,8 +294,6 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
       $this->_logger->logMessage('Error', 'Contact has invalid address data (master id is set and we don\'t know how to process this yet) , not migrated. Source data is '.implode(';', $this->_sourceData));
       return false;
     }
-    // check if email and postal greeting exists, if not use default
-    $this->checkGreeting();
     return TRUE;
   }
 

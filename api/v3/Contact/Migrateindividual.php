@@ -8,7 +8,7 @@
  * @return void
  * @see http://wiki.civicrm.org/confluence/display/CRMDOC/API+Architecture+Standards
  */
-function _civicrm_api3_contact_Migrate_spec(&$spec) {
+function _civicrm_api3_contact_migrateindividual_spec(&$spec) {
 }
 
 /**
@@ -20,7 +20,7 @@ function _civicrm_api3_contact_Migrate_spec(&$spec) {
  * @see civicrm_api3_create_error
  * @throws API_Exception
  */
-function civicrm_api3_contact_Migrate($params) {
+function civicrm_api3_contact_migrateindividual($params) {
   set_time_limit(0);
   $returnValues = array();
   $entity = 'individual';
@@ -31,7 +31,7 @@ function civicrm_api3_contact_Migrate($params) {
   if (isset($params['options']) && isset($params['options']['limit'])) {
     $limit = $params['options']['limit'];
   }
-  $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_individual WHERE is_processed = 0 ORDER BY id LIMIT %1', array(1=>array($limit, 'Integer')));
+  $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_individual WHERE is_processed = 0 ORDER BY master_id, id LIMIT %1', array(1=>array($limit, 'Integer')));
   while ($daoSource->fetch()) {
     $civiContact = new CRM_Migration_Individual($entity, $daoSource, $logger);
     $newContact = $civiContact->migrate();
@@ -55,5 +55,5 @@ function civicrm_api3_contact_Migrate($params) {
   } else {
     $returnValues[] = $createCount.' contacts migrated to CiviCRM, '.$logCount.' with logged errors that were not migrated';
   }
-  return civicrm_api3_create_success($returnValues, $params, 'Contact', 'Migrate');
+  return civicrm_api3_create_success($returnValues, $params, 'Contact', 'Migrateindividual');
 }
