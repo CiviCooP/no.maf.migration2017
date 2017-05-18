@@ -58,7 +58,7 @@ abstract class CRM_Migration_MAF {
    */
   private function entityCanBeMigrated($entity) {
     $validEntities = array(
-      'individual',
+      'individual', 'contributionrecur',
     );
     if (!in_array($entity, $validEntities)) {
       return FALSE;
@@ -205,5 +205,24 @@ abstract class CRM_Migration_MAF {
       }
     }
     return TRUE;
+  }
+
+  /**
+   * Method to find the new contact id with the old one as a identity
+   *
+   * @param $sourceContactId
+   * @return array|bool
+   */
+  protected function findNewContact($sourceContactId) {
+    if (!empty($sourceContactId)) {
+      try {
+        return civicrm_api3('Contact', 'identify', array(
+          'identifier' => $sourceContactId,
+          'identifier_type' => 'internal'));
+      }
+      catch (CiviCRM_API3_Exception $ex) {
+      }
+    }
+    return FALSE;
   }
 }

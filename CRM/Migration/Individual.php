@@ -1,10 +1,10 @@
 <?php
 
 /**
- * Class for ForumZFD Contact Migration to CiviCRM
+ * Class for MAF Norge Individual Migration to CiviCRM
  *
- * @author Erik Hommel (CiviCooP) <erik.hommel@civicoop.org>
- * @date 5 April 2017
+ * @author Jaap Jansma (CiviCooP) <jaap.jansma@civicoop.org>
+ * @date 15 May 2017
  * @license AGPL-3.0
  */
 class CRM_Migration_Individual extends CRM_Migration_MAF {
