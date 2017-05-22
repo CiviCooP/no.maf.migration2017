@@ -216,9 +216,16 @@ abstract class CRM_Migration_MAF {
   protected function findNewContact($sourceContactId) {
     if (!empty($sourceContactId)) {
       try {
-        return civicrm_api3('Contact', 'identify', array(
+        $newContact = civicrm_api3('Contact', 'findbyidentity', array(
           'identifier' => $sourceContactId,
-          'identifier_type' => 'internal'));
+          'identifier_type' => 'original_contact_id'));
+        if ($newContact['count'] == 0) {
+          return FALSE;
+        } else {
+          if ($newContact['id']) {
+            return $newContact['id'];
+          }
+        }
       }
       catch (CiviCRM_API3_Exception $ex) {
       }

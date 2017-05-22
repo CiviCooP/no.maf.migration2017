@@ -29,7 +29,9 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
         $message = 'Could not add or update contact, error from API Contact create: '.$ex->getMessage().'. Source data is ';
         $paramMessage = array();
         foreach ($apiParams as $paramKey => $paramValue) {
-          $paramMessage[] = $paramKey.' with value '.$paramValue;
+          if (!is_array($paramValue)) {
+            $paramMessage[] = $paramKey . ' with value ' . $paramValue;
+          }
         }
         $message .= implode('; ', $paramMessage);
         $this->_logger->logMessage('Error', $message);
@@ -113,9 +115,9 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
       unset($apiParams[$removeKey]);
     }
 
-    if (isset($this->_sourceData['new_contact_id']) && !empty($this->_sourceData['new_contact_id'])) {
-      $apiParams['id'] = $this->_sourceData['new_contact_id'];
-    }
+    //if (isset($this->_sourceData['new_contact_id']) && !empty($this->_sourceData['new_contact_id'])) {
+      //$apiParams['id'] = $this->_sourceData['new_contact_id'];
+    //}
 
     $apiParams['preferred_communication_method'] = array();
     $preferred_communication_method = explode(CRM_Core_DAO::VALUE_SEPARATOR,  $this->_sourceData['preferred_communication_method']);
@@ -150,7 +152,7 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
     $params['contact_id'] = $contact_id;
     $params['identifier'] = $original_contact_id;
     $params['identifier_type'] = $config->getOriginalContactIdType();
-    civicrm_api3('Contact', 'addidentity', $params);
+    $identifier = civicrm_api3('Contact', 'addidentity', $params);
   }
 
   private function setCreateDate($contact_id) {

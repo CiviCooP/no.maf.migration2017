@@ -42,33 +42,47 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
    * @return bool|array
    */
   private function migratePrintedGiro() {
-    $printedGiroData = $this->generatePrintedGiroData();
-    if (!empty($printedGiroData)) {
+    $config = CRM_Mafsepa_Config::singleton();
+    $startDate = new DateTime($this->_sourceData['start_date']);
+    try {
+      $frequency = civicrm_api3('OptionValue', 'getvalue', array(
+        'option_group_id' => 'maf_partners_frequency',
+        'name' => $this->_sourceData['frequency_unit'],
+        'return' => 'value',
+      ));
+    }
+    catch (CiviCRM_API3_Exception $ex) {
+      $frequency = 1;
+      $this->_logger->logMessage('Warning', 'Frequency '.$this->_sourceData['frequency_unit']
+        .' not found in CiviCRM, migrated as month! Needs to be checked');
+    }
+    $sqlParams =  array(
+      1 => array($this->_sourceData['contact_id'], 'Integer',),
+      2 => array($startDate->format('d-m-Y'), 'String',),
+      3 => array($config->getDefaultFundraisingCampaignId(), 'Integer',),
+      4 => array($frequency, 'Integer',),
+      5 => array($this->_sourceData['amount'], 'Money'),
+    );
+    if (!empty($this->_sourceData['end_date'])) {
+      $endDate = new DateTime($this->_sourceData['end_date']);
+      $sqlParams[6] = array($endDate->format('d-m-Y'),'String');
       $sql = 'INSERT INTO civicrm_value_maf_partners_non_avtale (entity_id, maf_partners_start_date, 
-        maf_partners_campaign, maf_partners_frequency, maf_partners_amount, maf_partners_end_date) 
-        VALUES(%1, %2, %3, %4, %5, %6)';
-      CRM_Core_DAO::executeQuery($sql, $printedGiroData);
+      maf_partners_campaign, maf_partners_frequency, maf_partners_amount, maf_partners_end_date) VALUES(%1, %2, %3, %4, %5, %6)';
     } else {
-      $this->_logger->logMessage('Error', 'Could not generate printed giro data for recurring contribution ID '
-        .$this->_sourceData['id'].', not migrated!');
+      $sql = 'INSERT INTO civicrm_value_maf_partners_non_avtale (entity_id, maf_partners_start_date, 
+      maf_partners_campaign, maf_partners_frequency, maf_partners_amount) VALUES(%1, %2, %3, %4, %5)';
+    }
+    try {
+      CRM_Core_DAO::executeQuery($sql, $sqlParams);
+      $latest = CRM_Core_DAO::executeQuery('SELECT id FROM civicrm_value_maf_partners_non_avtale ORDER BY id DESC LIMIT 1');
+      $latest->fetch();
+      return array('entity_id' => $latest->id);
+    }
+    catch (Exception $ex) {
+      return FALSE;
     }
   }
 
-  /**
-   * Method to generate the data for the printed giro
-   *
-   * @return array
-   */
-  private function generatePrintedGiroData() {
-    return array(
-      1 => array($this->_sourceData['contact_id'], 'Integer',),
-      2 => array($this->_sourceData['start_date'], 'String',),
-      3 => array($this->_sourceData['contribution_campaign_id'], 'Integer',),
-      4 => array($this->_sourceData['frequency_unit'], 'Integer',),
-      5 => array($this->_sourceData['amount'], 'Money'),
-      6 => array($this->_sourceData['end_date'], 'String')
-    );
-  }
   /**
    * Method to create an avtale recurring contribution with avtale giro custom data
    *
@@ -79,24 +93,17 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     if (!empty($mandateData)) {
       try {
         $mandate = civicrm_api3('SepaMandate', 'createfull', $mandateData);
+        $avtaleData = $this->generateAvtaleData($mandate['values'][$mandate['id']]);
+        if ($avtaleData == TRUE) {
+          return $mandate['values'][$mandate['id']];
+        } else {
+          $this->_logger->logMessage('Error', 'Could not generate avtale data for recurring contribution ID '
+            .$this->_sourceData['id'].', half migrated, mandate was created!');
+          return FALSE;
+        }
       }
       catch (CiviCRM_API3_Exception $ex) {
         $this->_logger->logMessage('Error', 'Could not create the SEPA Mandate, error from the SepaMandate createfull API: '.$ex->getMessage());
-        return FALSE;
-      }
-      $avtaleData = $this->generateAvtaleData($mandate);
-      if (!empty($avtaleData)) {
-        $config = CRM_Mafsepa_Config::singleton();
-        $tableName = $config->getAvtaleGiroCustomGroup('table_name');
-        $maxAmountCustomField = $config->getAvtaleGiroCustomField('maf_maximum_amount');
-        $notificationCustomField = $config->getAvtaleGiroCustomField('maf_notification_bank');
-        $sql = 'INSERT INTO ' . $tableName . ' (entity_id, ' . $maxAmountCustomField['column_name'] . ', ' . $notificationCustomField['column_name']
-          . ') VALUES(%1, %2, %3)';
-        CRM_Core_DAO::executeQuery($sql, $avtaleData);
-        return $mandate;
-      } else {
-        $this->_logger->logMessage('Error', 'Could not generate avtale data for recurring contribution ID '
-          .$this->_sourceData['id'].', half migrated, mandate was created!');
         return FALSE;
       }
     } else {
@@ -127,14 +134,104 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
         .$this->_sourceData['contact_id'].', recurring contribution not migrated');
       return FALSE;
     }
-    if (!CRM_Core_DAO::checkTableExists('civicrm_value_maf_avtale_giro') == FALSE) {
-      throw new Exception('Could not find table civicrm_value_maf_partners_non_avtale in '
+    // do not migrate if start and end date are equal
+    if (!empty($this->_sourceData['end_date'])) {
+      $startDate = new DateTime($this->_sourceData['start_date']);
+      $endDate = new DateTime($this->_sourceData['end_date']);
+      if ($startDate === $endDate) {
+        $this->_logger->logMessage('Ignored', 'Start date and end date of the recurring contribution '.$this->_sourceData['id']
+          .' are the same, ignored. (Contact '.$this->_sourceData['contact_id']);
+        return FALSE;
+      }
+    }
+    if (!CRM_Core_DAO::checkTableExists('civicrm_value_maf_avtale_giro')) {
+      throw new Exception('Could not find table civicrm_value_maf_avtale_giro in '
         .__METHOD__.', contact your system administrator!');
     }
-    if (!CRM_Core_DAO::checkTableExists('civicrm_value_maf_avtale_giro') == FALSE) {
+    if (!CRM_Core_DAO::checkTableExists('civicrm_value_maf_partners_non_avtale')) {
       throw new Exception('Could not find table civicrm_value_maf_partners_non_avtale in '
         .__METHOD__.', contact your system administrator!');
     }
     return TRUE;
+  }
+
+  /**
+   * Method to generate the data for a sdd mandate
+   *
+   * @return array
+   * @throws Exception
+   */
+  private function generateMandateData() {
+    $mandateData = array();
+    $creditor = CRM_Sepa_Logic_Settings::defaultCreditor();
+    if (!empty($creditor)) {
+      $config = CRM_Mafsepa_Config::singleton();
+      $defaultCampaignId = $config->getDefaultFundraisingCampaignId();
+      if (!empty($defaultCampaignId)) {
+        try {
+          $kid = civicrm_api3('Kid', 'generate', array(
+            'contact_id' => $this->_sourceData['contact_id'],
+            'campaign_id' => $defaultCampaignId,
+          ));
+          $mandateData = array(
+            'creditor_id' => $creditor->creditor_id,
+            'contact_id' => $this->_sourceData['contact_id'],
+            'financial_type_id' => 1,
+            'status' => $this->_sourceData['contribution_status_id'],
+            'type' => $config->getDefaultMandateType(),
+            'currency' => $this->_sourceData['currency'],
+            'source' => 'Migration 2017',
+            'reference' => $kid['kid_number'],
+            'kid' => $kid['kid_number'],
+            'frequency_interval' => $this->_sourceData['frequency_interval'],
+            'frequency_unit' => $this->_sourceData['frequency_unit'],
+            'amount' => $this->_sourceData['amount'],
+            'campaign_id' => $defaultCampaignId,
+            'cycle_day' => $this->_sourceData['cycle_day'],
+          );
+          if (isset($this->_sourceData['start_date']) && !empty($this->_sourceData['start_date'])) {
+            $startDate = new DateTime($this->_sourceData['start_date']);
+            $mandateData['start_date'] = $startDate->format('d-m-Y');
+          }
+          if (isset($this->_sourceData['end_date']) && !empty($this->_sourceData['end_date'])) {
+            $endDate = new DateTime($this->_sourceData['end_date']);
+            $mandateData['end_date'] = $endDate->format('d-m-Y');
+          }
+          if (isset($this->_sourceData['create_date']) && !empty($this->_sourceData['create_date'])) {
+            $createDate = new DateTime($this->_sourceData['create_date']);
+            $mandateData['creation_date'] = $createDate->format('d-m-Y');
+            $mandateData['validation_date'] = $createDate->format('d-m-Y');
+          }
+        } catch (CiviCRM_API3_Exception $ex) {
+        }
+      }
+    }
+    return $mandateData;
+  }
+
+  /**
+   * Method to generate avtale data
+   *
+   * @param $mandate
+   * @return bool
+   */
+  private function generateAvtaleData($mandate) {
+    $config = CRM_Mafsepa_Config::singleton();
+    $tableName = $config->getAvtaleGiroCustomGroup('table_name');
+    $maxAmountCustomField = $config->getAvtaleGiroCustomField('maf_maximum_amount');
+    $notificationCustomField = $config->getAvtaleGiroCustomField('maf_notification_bank');
+    $sql = 'INSERT INTO ' . $tableName . ' (entity_id, ' . $maxAmountCustomField['column_name'] . ', ' . $notificationCustomField['column_name']
+      . ') VALUES(%1, %2, %3)';
+    $sqlParams = array(
+      1 => array($mandate['entity_id'], 'Integer',),
+      2 => array($this->_sourceData['maximum_amount'], 'Money',),
+      3 => array($this->_sourceData['notification_for_bank'], 'Integer',),);
+    try {
+      CRM_Core_DAO::executeQuery($sql, $sqlParams);
+      return TRUE;
+    }
+    catch (Exception $ex) {
+      return FALSE;
+    }
   }
 }
