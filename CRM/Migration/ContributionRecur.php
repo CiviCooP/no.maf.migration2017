@@ -54,18 +54,18 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     catch (CiviCRM_API3_Exception $ex) {
       $frequency = 1;
       $this->_logger->logMessage('Warning', 'Frequency '.$this->_sourceData['frequency_unit']
-        .' not found in CiviCRM, migrated as month! Needs to be checked');
+        .' for printed giro ID '.$this->_sourceData['id'].' not found in CiviCRM, migrated as month! Needs to be checked');
     }
     $sqlParams =  array(
       1 => array($this->_sourceData['contact_id'], 'Integer',),
-      2 => array($startDate->format('d-m-Y'), 'String',),
+      2 => array($startDate->format('Ymd'), 'String',),
       3 => array($config->getDefaultFundraisingCampaignId(), 'Integer',),
       4 => array($frequency, 'Integer',),
       5 => array($this->_sourceData['amount'], 'Money'),
     );
     if (!empty($this->_sourceData['end_date'])) {
       $endDate = new DateTime($this->_sourceData['end_date']);
-      $sqlParams[6] = array($endDate->format('d-m-Y'),'String');
+      $sqlParams[6] = array($endDate->format('Ymd'),'String');
       $sql = 'INSERT INTO civicrm_value_maf_partners_non_avtale (entity_id, maf_partners_start_date, 
       maf_partners_campaign, maf_partners_frequency, maf_partners_amount, maf_partners_end_date) VALUES(%1, %2, %3, %4, %5, %6)';
     } else {
@@ -103,7 +103,8 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
         }
       }
       catch (CiviCRM_API3_Exception $ex) {
-        $this->_logger->logMessage('Error', 'Could not create the SEPA Mandate, error from the SepaMandate createfull API: '.$ex->getMessage());
+        $this->_logger->logMessage('Error', 'Could not create the SEPA Mandate with recur ID '.$this->_sourceData['id']
+          .', error from the SepaMandate createfull API: '.$ex->getMessage());
         return FALSE;
       }
     } else {
@@ -138,7 +139,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     if (!empty($this->_sourceData['end_date'])) {
       $startDate = new DateTime($this->_sourceData['start_date']);
       $endDate = new DateTime($this->_sourceData['end_date']);
-      if ($startDate === $endDate) {
+      if ($startDate == $endDate) {
         $this->_logger->logMessage('Ignored', 'Start date and end date of the recurring contribution '.$this->_sourceData['id']
           .' are the same, ignored. (Contact '.$this->_sourceData['contact_id']);
         return FALSE;
@@ -169,10 +170,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
       $defaultCampaignId = $config->getDefaultFundraisingCampaignId();
       if (!empty($defaultCampaignId)) {
         try {
-          $kid = civicrm_api3('Kid', 'generate', array(
-            'contact_id' => $this->_sourceData['contact_id'],
-            'campaign_id' => $defaultCampaignId,
-          ));
+          $reference = $this->generateUniqueReference();
           $mandateData = array(
             'creditor_id' => $creditor->creditor_id,
             'contact_id' => $this->_sourceData['contact_id'],
@@ -181,8 +179,8 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
             'type' => $config->getDefaultMandateType(),
             'currency' => $this->_sourceData['currency'],
             'source' => 'Migration 2017',
-            'reference' => $kid['kid_number'],
-            'kid' => $kid['kid_number'],
+            'reference' => $reference,
+            'kid' => $reference,
             'frequency_interval' => $this->_sourceData['frequency_interval'],
             'frequency_unit' => $this->_sourceData['frequency_unit'],
             'amount' => $this->_sourceData['amount'],
@@ -233,5 +231,35 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     catch (Exception $ex) {
       return FALSE;
     }
+  }
+
+  /**
+   * Method to generate a unique reference for the mandate if the contact has more than one
+   *
+   * @return string
+   */
+  private function generateUniqueReference() {
+    $config = CRM_Mafsepa_Config::singleton();
+    $defaultCampaignId = $config->getDefaultFundraisingCampaignId();
+    $kid = civicrm_api3('Kid', 'generate', array(
+      'contact_id' => $this->_sourceData['contact_id'],
+      'campaign_id' => $defaultCampaignId,
+    ));
+    $reference = $kid['kid_number'];
+    // first check if mandate reference already exists and if so, add letter until it does not
+    $unique = FALSE;
+    $suffixes = array('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h');
+    while ($unique == FALSE) {
+      $count = civicrm_api3('SepaMandate', 'getcount', array(
+        'reference' => $reference,
+      ));
+      if ($count > 0) {
+        $reference = $kid['kid_number'].current($suffixes);
+        next($suffixes);
+      } else {
+        $unique = TRUE;
+      }
+    }
+    return $reference;
   }
 }

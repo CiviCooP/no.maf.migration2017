@@ -17,11 +17,12 @@ function civicrm_api3_contribution_recur_Migrate($params) {
   $createCount = 0;
   $logCount = 0;
   $logger = new CRM_Migration_Logger($entity);
-  $limit = 10;
+  $limit = 1000;
   if (isset($params['options']) && isset($params['options']['limit'])) {
     $limit = $params['options']['limit'];
   }
-  $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_recurring_contribution WHERE is_processed = 0 ORDER BY id LIMIT %1', array(1=>array($limit, 'Integer')));
+  $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_recurring_contribution 
+    WHERE is_processed = 0 AND payment_instrument_id = 12 ORDER BY id LIMIT %1', array(1=>array($limit, 'Integer')));
   while ($daoSource->fetch()) {
     $civiRecur = new CRM_Migration_ContributionRecur($entity, $daoSource, $logger);
     $newMandate = $civiRecur->migrate();
