@@ -22,7 +22,7 @@ function civicrm_api3_contribution_recur_Migrate($params) {
     $limit = $params['options']['limit'];
   }
   $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_recurring_contribution 
-    WHERE is_processed = 0 AND payment_instrument_id = 12 ORDER BY id LIMIT %1', array(1=>array($limit, 'Integer')));
+    WHERE is_processed = 0 ORDER BY id LIMIT %1', array(1=>array($limit, 'Integer')));
   while ($daoSource->fetch()) {
     $civiRecur = new CRM_Migration_ContributionRecur($entity, $daoSource, $logger);
     $newMandate = $civiRecur->migrate();

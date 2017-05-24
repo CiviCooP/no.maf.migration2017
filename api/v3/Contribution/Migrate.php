@@ -17,11 +17,11 @@ function civicrm_api3_contribution_Migrate($params) {
   $createCount = 0;
   $logCount = 0;
   $logger = new CRM_Migration_Logger($entity);
-  $limit = 100;
+  $limit = 1000;
   if (isset($params['options']) && isset($params['options']['limit'])) {
     $limit = $params['options']['limit'];
   }
-  $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_contribution 
+  $daoSource = CRM_Core_DAO::executeQuery('SELECT * FROM migration_contribution
     WHERE is_processed = 0 ORDER BY id LIMIT %1', array(1=>array($limit, 'Integer')));
   while ($daoSource->fetch()) {
     $civiContribution = new CRM_Migration_Contribution($entity, $daoSource, $logger);

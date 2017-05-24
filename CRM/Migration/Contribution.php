@@ -63,9 +63,15 @@ class CRM_Migration_Contribution extends CRM_Migration_MAF {
    * @return bool|array
    */
   private function migratePrintedGiro() {
-    // use new recur id
-    $this->_contributionData['contribution_recur_id'] = $this->_sourceData['new_recur_id'];
-    $this->_contributionData['source'] = 'Printed Giro '.$this->_sourceData['new_recur_id'].': '.$this->_contributionData['source'];
+    // find new recurring id
+    $sql = "SELECT new_recur_id FROM migration_recurring_contribution WHERE id = %1";
+    $newRecurId = CRM_Core_DAO::singleValueQuery($sql, array(1 => array($this->_sourceData['contribution_recur_id'], 'Integer')));
+    if ($newRecurId) {
+      $this->_contributionData['source'] = 'Printed Giro '.$newRecurId.': '.$this->_contributionData['source'];
+    } else {
+      $this->_contributionData['source'] = 'Printed Giro '.$this->_contributionData['source'];
+    }
+
     try {
       $newContribution = civicrm_api3('Contribution', 'create', $this->_contributionData);
       return $newContribution['values'][$newContribution['id']];
@@ -83,12 +89,15 @@ class CRM_Migration_Contribution extends CRM_Migration_MAF {
    * @return bool|array
    */
   private function migrateAvtaleGiro() {
-    // use new recur id if set
-    if (empty($this->_sourceData['new_recur_id'])) {
+    // find new recur, error if not exists
+    $sql = "SELECT new_recur_id FROM migration_recurring_contribution WHERE id = %1";
+    $newRecurId = CRM_Core_DAO::singleValueQuery($sql, array(1 => array($this->_sourceData['contribution_recur_id'], 'Integer')));
+    if ($newRecurId) {
+      $this->_contributionData['contribution_recur_id'] = $newRecurId;
+    } else {
       $this->_logger->logMessage('Error', 'Could not find recurring contribution for avtale contribution ID '.$this->_sourceData['id'].', not migrated');
       return FALSE;
     }
-    $this->_contributionData['contribution_recur_id'] = $this->_sourceData['new_recur_id'];
     // set payment instrument to RCUR
     $this->_contributionData['payment_instrument_id'] = "RCUR";
     try {

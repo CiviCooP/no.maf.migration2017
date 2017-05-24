@@ -17,14 +17,14 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
   public function migrate() {
     if ($this->validSourceData()) {
       // process depending on payment_instrument_id
-      switch ($this->_sourceData['payment_instrument_id']) {
+      switch ($this->_sourceData['payment_type_id']) {
         // avtale
-        case 7:
+        case 2:
           $created = $this->migrateAvtaleGiro();
           return $created;
           break;
           // printed
-        case 12:
+        case 3:
           $created = $this->migratePrintedGiro();
           return $created;
           break;
@@ -175,7 +175,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
             'creditor_id' => $creditor->creditor_id,
             'contact_id' => $this->_sourceData['contact_id'],
             'financial_type_id' => 1,
-            'status' => $this->_sourceData['contribution_status_id'],
+            'status' => 'RCUR',
             'type' => $config->getDefaultMandateType(),
             'currency' => $this->_sourceData['currency'],
             'source' => 'Migration 2017',
