@@ -67,9 +67,9 @@ class CRM_Migration_Contribution extends CRM_Migration_MAF {
     $sql = "SELECT new_recur_id FROM migration_recurring_contribution WHERE id = %1";
     $newRecurId = CRM_Core_DAO::singleValueQuery($sql, array(1 => array($this->_sourceData['contribution_recur_id'], 'Integer')));
     if ($newRecurId) {
-      $this->_contributionData['source'] = 'Printed Giro '.$newRecurId.': '.$this->_contributionData['source'];
+      $this->_contributionData['source'] = $this->_contributionData['source'].' (Printed Giro '.$newRecurId.')';
     } else {
-      $this->_contributionData['source'] = 'Printed Giro '.$this->_contributionData['source'];
+      $this->_contributionData['source'] = $this->_contributionData['source'].' (Printed Giro)';
     }
 
     try {
