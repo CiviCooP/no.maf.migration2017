@@ -17,7 +17,7 @@ function civicrm_api3_contribution_Migrate($params) {
   $createCount = 0;
   $logCount = 0;
   $logger = new CRM_Migration_Logger($entity);
-  $limit = 1000;
+  $limit = 2500;
   if (isset($params['options']) && isset($params['options']['limit'])) {
     $limit = $params['options']['limit'];
   }
