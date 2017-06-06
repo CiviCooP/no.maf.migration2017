@@ -87,6 +87,16 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
       'state_province_id',
       'postal_code',
       'master_id',
+      'master_street_address',
+      'master_street_number',
+      'master_street_number_suffix',
+      'master_street_name',
+      'master_city',
+      'master_country_id',
+      'master_county_id',
+      'master_state_province_id',
+      'master_postal_code',
+      'master_master_id',
       'new_contact_id',
       'is_processed',
       'personsnummer',
@@ -196,59 +206,87 @@ class CRM_Migration_Individual extends CRM_Migration_MAF {
   private function addAddress($contact_id) {
     $config = CRM_Migration_Config::singleton();
     $address_fields = array(
-      'street_address',
-      'street_number',
-      'street_number_suffix',
-      'street_name',
-      'city',
-      'country_id',
-      'county_id',
-      'state_province_id',
-      'postal_code',
+      'street_address' => 'street_address',
+      'street_number' => 'street_number',
+      'street_number_suffix' => 'street_number_suffix',
+      'street_name' => 'street_name',
+      'city' => 'city',
+      'country_id' => 'country_id',
+      'county_id' => 'county_id',
+      'state_province_id' => 'state_province_id',
+      'postal_code' => 'postal_code',
     );
 
     $apiParams = array();
 
     if (isset($this->_sourceData['master_id']) && !empty($this->_sourceData['master_id'])) {
       $master_contact_id = CRM_Core_DAO::singleValueQuery("SELECT id FROM migration_individual WHERE address_id = %1", array(1=>array($this->_sourceData['master_id'], 'Integer')));
-      if (empty($master_contact_id)) {
-        $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact '
-          .$this->_sourceData['display_name'].' and could not find the master address, address ignored');
-        return;
-      }
-      // Find master id
-      $master_contact = civicrm_api3('Contact', 'findbyidentity', array(
-        'identifier_type' => $config->getOriginalContactIdType(),
-        'identifier' => $master_contact_id,
-      ));
-      if ($master_contact['count'] == 1) {
-        $master_contact_id = $master_contact['id'];
-      } else {
-        $master_contact_id = false;
-      }
-
-      if (empty($master_contact_id)) {
-        $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact '
-          .$this->_sourceData['display_name'].' and could not find the master address, address ignored');
-        return;
-      }
-
-      try {
-        $apiParams['master_id'] = civicrm_api3('Address', 'getvalue', array(
-          'contact_id' => $master_contact_id,
-          'is_primary' => 1,
-          'return' => 'id'
+      if (!empty($master_contact_id)) {
+        // Find master id
+        $master_contact = civicrm_api3('Contact', 'findbyidentity', array(
+          'identifier_type' => $config->getOriginalContactIdType(),
+          'identifier' => $master_contact_id,
         ));
-      } catch (Exception $e ) {
-        $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact '
-          . $this->_sourceData['display_name'] . ', address ignored');
-        return;
+        if ($master_contact['count'] == 1) {
+          $master_contact_id = $master_contact['id'];
+        }
+        else {
+          $master_contact_id = FALSE;
+        }
+      }
+
+      if (empty($master_contact_id)) {
+        if (!empty($this->_sourceData['master_master_id'])) {
+          $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact and that address is also linked '
+            . $this->_sourceData['display_name'] . ' and could not find the master address, address ignored');
+          return;
+        } else {
+          // Prefill address with data from master address fields
+          $address_fields = array(
+            'street_address' => 'master_street_address',
+            'street_number' => 'master_street_number',
+            'street_number_suffix' => 'master_street_number_suffix',
+            'street_name' => 'master_street_name',
+            'city' => 'master_city',
+            'country_id' => 'master_country_id',
+            'county_id' => 'master_county_id',
+            'state_province_id' => 'master_state_province_id',
+            'postal_code' => 'master_postal_code',
+          );
+        }
+      } else {
+        try {
+          $apiParams['master_id'] = civicrm_api3('Address', 'getvalue', array(
+            'contact_id' => $master_contact_id,
+            'is_primary' => 1,
+            'return' => 'id'
+          ));
+        } catch (Exception $e) {
+          if (!empty($this->_sourceData['master_master_id'])) {
+            $this->_logger->logMessage('Warning', 'Could not add an address because it is linked to another address for contact and that address is also linked '
+              . $this->_sourceData['display_name'] . ' and could not find the master address, address ignored');
+            return;
+          } else {
+            // Prefill address with data from master address fields
+            $address_fields = array(
+              'street_address' => 'master_street_address',
+              'street_number' => 'master_street_number',
+              'street_number_suffix' => 'master_street_number_suffix',
+              'street_name' => 'master_street_name',
+              'city' => 'master_city',
+              'country_id' => 'master_country_id',
+              'county_id' => 'master_county_id',
+              'state_province_id' => 'master_state_province_id',
+              'postal_code' => 'master_postal_code',
+            );
+          }
+        }
       }
     }
 
-    foreach($address_fields as $field) {
-      if (isset($this->_sourceData[$field]) && !empty($this->_sourceData[$field])) {
-        $apiParams[$field] = $this->_sourceData[$field];
+    foreach($address_fields as $field => $source_field) {
+      if (isset($this->_sourceData[$source_field]) && !empty($this->_sourceData[$source_field])) {
+        $apiParams[$field] = $this->_sourceData[$source_field];
       }
     }
 
