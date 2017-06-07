@@ -1,20 +1,19 @@
 <?php
 
 /**
- * Class for MAF Norge Individual Migration to CiviCRM
+ * Class for MAF Norge Organisation Migration to CiviCRM
  *
  * @author Jaap Jansma (CiviCooP) <jaap.jansma@civicoop.org>
  * @date 15 May 2017
  * @license AGPL-3.0
  */
-class CRM_Migration_Individual extends CRM_Migration_Contact {
+class CRM_Migration_Organisation extends CRM_Migration_Contact {
 
   protected function setApiParams() {
     $config = CRM_Migration_Config::singleton();
     $apiParams = parent::setApiParams();
 
-    $apiParams['custom_'.$config->getPersonnummerCustomFieldId()] = $this->_sourceData['personsnummer'];
-    $apiParams['custom_'.$config->getPrimaryContactForCommunicationCustomFieldId()] = $this->_sourceData['primary_contact_for_communication'];
+    $apiParams['custom_'.$config->getOrganisationnummerCustomFieldId()] = $this->_sourceData['organisasjonsnummer'];
 
     $apiParams['custom_'.$config->getReservertKaldPostCustomFieldId()] = $this->_sourceData['reserved_cold_mail'];
     $apiParams['custom_'.$config->getReservertKaldTelefonCustomFieldId()] = $this->_sourceData['reserved_cold_phone'];
@@ -44,9 +43,12 @@ class CRM_Migration_Individual extends CRM_Migration_Contact {
       'hash',
       'api_key',
       'source',
+      'first_name',
+      'middle_name',
+      'last_name',
+      'prefix_id',
+      'suffix_id',
       'household_name',
-      'primary_contact_id',
-      'organization_name',
       'sic_code',
       'user_unique_id',
       'employer_id',
@@ -87,6 +89,7 @@ class CRM_Migration_Individual extends CRM_Migration_Contact {
       'new_contact_id',
       'is_processed',
       'personsnummer',
+      'organisasjonsnummer',
       'mobile',
       'contact_source_maf_source',
       'contact_source_date',
