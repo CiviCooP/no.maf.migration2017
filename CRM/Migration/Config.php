@@ -118,6 +118,12 @@ class CRM_Migration_Config {
       'return' => 'id',
     ));
 
+    $this->_organisationnummerCustomFieldId = civicrm_api3('CustomField', 'getvalue', array(
+      'name' => 'organisasjonsnummer',
+      'custom_group_id' => 'maf_organisation',
+      'return' => 'id',
+    ));
+
     $this->_reservertKaldPostCustomFieldId = civicrm_api3('CustomField', 'getvalue', array(
       'name' => 'reservert_kald_post',
       'custom_group_id' => 'reservasjonsregisteret',
@@ -217,6 +223,14 @@ class CRM_Migration_Config {
    */
   public function getPrimaryContactForCommunicationCustomFieldId() {
     return $this->_primaryContactForCommunicationCustomFieldId;
+  }
+
+  /**
+   * Getter for custom field id of field Organisationnummer
+   * @return array|null
+   */
+  public function getOrganisationnummerCustomFieldId() {
+    return $this->_organisationnummerCustomFieldId;
   }
 
   /**
