@@ -37,7 +37,6 @@ class CRM_Migration_Individual extends CRM_Migration_Contact {
       'external_identifier',
       'sort_name',
       'display_name',
-      'nick_name',
       'legal_name',
       'image_URL',
       'preferred_language',
