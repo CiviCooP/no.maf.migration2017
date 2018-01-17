@@ -172,7 +172,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
         try {
           $reference = $this->generateUniqueReference();
           $mandateData = array(
-            'creditor_id' => $creditor->creditor_id,
+            'creditor_id' => $creditor->id,
             'contact_id' => $this->_sourceData['contact_id'],
             'financial_type_id' => 1,
             'status' => 'RCUR',
