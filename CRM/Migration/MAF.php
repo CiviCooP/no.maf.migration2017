@@ -58,7 +58,7 @@ abstract class CRM_Migration_MAF {
    */
   private function entityCanBeMigrated($entity) {
     $validEntities = array(
-      'individual', 'organisation', 'contributionrecur', 'contribution', 'contributionsoft', 'kid_number'
+      'individual', 'organisation', 'contributionrecur', 'contribution', 'contributionsoft', 'kid_number', 'groupcontact'
     );
     if (!in_array($entity, $validEntities)) {
       return FALSE;
