@@ -15,6 +15,7 @@ class CRM_Migration_Individual extends CRM_Migration_Contact {
 
     $apiParams['custom_'.$config->getPersonnummerCustomFieldId()] = $this->_sourceData['personsnummer'];
     $apiParams['custom_'.$config->getPrimaryContactForCommunicationCustomFieldId()] = $this->_sourceData['primary_contact_for_communication'];
+		$apiParams['custom_'.$config->getTakkebrevPrPostCustomFieldId()] = $this->_sourceData['takkebrev_pr_post'];
 
     $apiParams['custom_'.$config->getReservertKaldPostCustomFieldId()] = $this->_sourceData['reserved_cold_mail'];
     $apiParams['custom_'.$config->getReservertKaldTelefonCustomFieldId()] = $this->_sourceData['reserved_cold_phone'];
@@ -96,6 +97,7 @@ class CRM_Migration_Individual extends CRM_Migration_Contact {
       'reserved_humantarian_organisations',
       'reserved_last_updated',
       'primary_contact_for_communication',
+      'takkebrev_pr_post',
       'date_added'
     );
     return $columnsToIgnore;

@@ -21,6 +21,7 @@ class CRM_Migration_Config {
   private $_defaultLocationTypeId = NULL;
   private $_mobilePhoneTypeId = NULL;
   private $_personnummerCustomFieldId = NULL;
+	private $_takkebrevPrPostCustomFieldId = NULL;
   private $_primaryContactForCommunicationCustomFieldId = NULL;
 
   private $_reservertKaldPostCustomFieldId = NULL;
@@ -109,6 +110,11 @@ class CRM_Migration_Config {
 
     $this->_personnummerCustomFieldId = civicrm_api3('CustomField', 'getvalue', array(
       'name' => 'personnummer',
+      'custom_group_id' => 'maf_person',
+      'return' => 'id',
+    ));
+		$this->_takkebrevPrPostCustomFieldId = civicrm_api3('CustomField', 'getvalue', array(
+      'name' => 'takkebrev_pr_post',
       'custom_group_id' => 'maf_person',
       'return' => 'id',
     ));
@@ -208,13 +214,20 @@ class CRM_Migration_Config {
     return $this->_reservertSistOppdatertCustomFieldId;
   }
 
-
   /**
    * Getter for custom field id of field Personnummer
    * @return array|null
    */
   public function getPersonnummerCustomFieldId() {
     return $this->_personnummerCustomFieldId;
+  }
+	
+	/**
+   * Getter for custom field id of field Takkebrev Pr. Post.
+   * @return array|null
+   */
+  public function getTakkebrevPrPostCustomFieldId() {
+    return $this->_takkebrevPrPostCustomFieldId;
   }
 
   /**
