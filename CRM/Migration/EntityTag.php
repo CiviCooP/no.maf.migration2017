@@ -79,7 +79,15 @@ class CRM_Migration_EntityTag extends CRM_Migration_MAF {
 		$tagParams['used_for'] = 'Contacts';
 		try {
 			$result = civicrm_api3('Tag', 'create', $tagParams);
-			return $result['id'];
+			
+			// Find the id of the tag.
+			$tag_id = CRM_Core_DAO::singleValueQuery("SELECT id FROM civicrm_tag WHERE name = %1", array(
+				1 => array($this->_sourceData['name'], 'String'),
+			));
+			if ($tag_id) {
+				return $tag_id;
+			}
+			
 		} catch (Exception $e) {
 			// do nothing
 		}
