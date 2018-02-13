@@ -185,7 +185,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
             'frequency_unit' => $this->_sourceData['frequency_unit'],
             'amount' => $this->_sourceData['amount'],
             'campaign_id' => $defaultCampaignId,
-            'cycle_day' => $this->_sourceData['cycle_day'],
+            'cycle_day' => 21,
           );
           if (isset($this->_sourceData['start_date']) && !empty($this->_sourceData['start_date'])) {
             $startDate = new DateTime($this->_sourceData['start_date']);
