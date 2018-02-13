@@ -178,7 +178,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
             'status' => 'RCUR',
             'type' => $config->getDefaultMandateType(),
             'currency' => $this->_sourceData['currency'],
-            'source' => 'Migration 2017',
+            'source' => '', // Keep this empty.
             'reference' => $reference,
             'kid' => $reference,
             'frequency_interval' => $this->_sourceData['frequency_interval'],
