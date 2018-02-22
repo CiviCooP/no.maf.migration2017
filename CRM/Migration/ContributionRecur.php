@@ -46,7 +46,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     $startDate = new DateTime($this->_sourceData['start_date']);
     try {
       $frequency = civicrm_api3('OptionValue', 'getvalue', array(
-        'option_group_id' => 'maf_partners_frequency',
+        'option_group_id' => 'maf_printed_giro_frequency',
         'name' => $this->_sourceData['frequency_unit'],
         'return' => 'value',
       ));
@@ -66,15 +66,15 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     if (!empty($this->_sourceData['end_date'])) {
       $endDate = new DateTime($this->_sourceData['end_date']);
       $sqlParams[6] = array($endDate->format('Ymd'),'String');
-      $sql = 'INSERT INTO civicrm_value_maf_partners_non_avtale (entity_id, maf_partners_start_date, 
-      maf_partners_campaign, maf_partners_frequency, maf_partners_amount, maf_partners_end_date) VALUES(%1, %2, %3, %4, %5, %6)';
+      $sql = 'INSERT INTO civicrm_value_printed_giro (entity_id, maf_printed_giro_start_date, 
+      maf_printed_giro_campaign, maf_printed_giro_frequency, maf_printed_giro_amount, maf_printed_giro_end_date) VALUES(%1, %2, %3, %4, %5, %6)';
     } else {
-      $sql = 'INSERT INTO civicrm_value_maf_partners_non_avtale (entity_id, maf_partners_start_date, 
-      maf_partners_campaign, maf_partners_frequency, maf_partners_amount) VALUES(%1, %2, %3, %4, %5)';
+      $sql = 'INSERT INTO civicrm_value_printed_giro (entity_id, maf_printed_giro_start_date, 
+      maf_printed_giro_campaign, maf_printed_giro_frequency, maf_printed_giro_amount) VALUES(%1, %2, %3, %4, %5)';
     }
     try {
       CRM_Core_DAO::executeQuery($sql, $sqlParams);
-      $latest = CRM_Core_DAO::executeQuery('SELECT id FROM civicrm_value_maf_partners_non_avtale ORDER BY id DESC LIMIT 1');
+      $latest = CRM_Core_DAO::executeQuery('SELECT id FROM civicrm_value_printed_giro ORDER BY id DESC LIMIT 1');
       $latest->fetch();
       return array('entity_id' => $latest->id);
     }
@@ -149,8 +149,8 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
       throw new Exception('Could not find table civicrm_value_maf_avtale_giro in '
         .__METHOD__.', contact your system administrator!');
     }
-    if (!CRM_Core_DAO::checkTableExists('civicrm_value_maf_partners_non_avtale')) {
-      throw new Exception('Could not find table civicrm_value_maf_partners_non_avtale in '
+    if (!CRM_Core_DAO::checkTableExists('civicrm_value_printed_giro')) {
+      throw new Exception('Could not find table civicrm_value_printed_giro in '
         .__METHOD__.', contact your system administrator!');
     }
     return TRUE;
