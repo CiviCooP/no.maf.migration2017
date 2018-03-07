@@ -59,7 +59,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     $sqlParams =  array(
       1 => array($this->_sourceData['contact_id'], 'Integer',),
       2 => array($startDate->format('Ymd'), 'String',),
-      3 => array($config->getDefaultFundraisingCampaignId(), 'Integer',),
+      3 => array($this->earmarkingToCampaign($this->_sourceData['earmarking']), 'Integer',),
       4 => array($frequency, 'Integer',),
       5 => array($this->_sourceData['amount'], 'Money'),
     );
@@ -167,7 +167,6 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     $creditor = CRM_Sepa_Logic_Settings::defaultCreditor();
     if (!empty($creditor)) {
       $config = CRM_Mafsepa_Config::singleton();
-      $defaultCampaignId = $config->getDefaultFundraisingCampaignId();
       if (!empty($defaultCampaignId)) {
         try {
           $reference = $this->generateUniqueReference();
@@ -184,7 +183,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
             'frequency_interval' => $this->_sourceData['frequency_interval'],
             'frequency_unit' => $this->_sourceData['frequency_unit'],
             'amount' => $this->_sourceData['amount'],
-            'campaign_id' => $defaultCampaignId,
+            'campaign_id' => $this->earmarkingToCampaign($this->_sourceData['earmarking']),
             'cycle_day' => 21,
           );
           if (isset($this->_sourceData['start_date']) && !empty($this->_sourceData['start_date'])) {

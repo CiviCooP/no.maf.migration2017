@@ -181,7 +181,7 @@ class CRM_Migration_Contribution extends CRM_Migration_MAF {
       'receive_date' => $this->_sourceData['receive_date'],
       'currency' => $this->_sourceData['currency'],
       'contribution_status_id' => $this->_sourceData['contribution_status_id'],
-      'campaign_id' => $config->getDefaultFundraisingCampaignId(),
+      'campaign_id' => $this->earmarkingToCampaign($this->_sourceData['earmarking']),
       'check_number' => $this->_sourceData['check_number'],
     );
     if (empty($this->_sourceData['source'])) {
