@@ -235,7 +235,7 @@ abstract class CRM_Migration_MAF {
 
 	protected function earmarkingToCampaign($earmarking) {
 		$config = CRM_Mafsepa_Config::singleton();
-    
+		
 		switch($earmarking) {
 			case '300 Medlemsinntekter':
 			case '333 Gaver Fuel':
@@ -246,25 +246,33 @@ abstract class CRM_Migration_MAF {
 			case 'Pedersen':
 			case 'Simpson':
 			case 'Steinsletten':
-				// Check if this campaign exists if so return the campaign id
-				// if not create the campaign and return then the campaign id
-				try {
-					$campaign_id = civicrm_api3('Campaign', 'getvalue', array(
-						'return' => 'id',
-						'title' => $earmarking,
-					));
-					return $campaign_id;
-				} catch (Exception $e) {
-					// Create the campaign
-					$params['is_active'] = 1;
-					$params['title'] = $earmarking;
-					$params['campaign_type_id'] = $config->getFundraisingCampaignType();
-					$result = civicrm_api3('Campaign', 'create', $params);
-					return $result['id'];
-				}
-				
+				$campaign = $earmarking;	
 				break;
+			case '331 Gaver Fly':
+				$campaign = '333 Gaver Fuel';
+				break;
+			default:
+				$campaign = '338 Gaver til frie midler';
+				break; 
 		}
+		
+		// Check if this campaign exists if so return the campaign id
+		// if not create the campaign and return then the campaign id
+		try {
+			$campaign_id = civicrm_api3('Campaign', 'getvalue', array(
+				'return' => 'id',
+				'title' => $campaign,
+			));
+			return $campaign_id;
+		} catch (Exception $e) {
+			// Create the campaign
+			$params['is_active'] = 1;
+			$params['title'] = $campaign;
+			$params['campaign_type_id'] = $config->getFundraisingCampaignType();
+			$result = civicrm_api3('Campaign', 'create', $params);
+			return $result['id'];
+		}
+		
 		return $config->getDefaultFundraisingCampaignId();
 	}
 }
