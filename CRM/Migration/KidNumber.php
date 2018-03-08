@@ -10,6 +10,8 @@ class CRM_Migration_KidNumber extends CRM_Migration_MAF {
       $apiParams['contact_id'] = $this->_sourceData['contact_id'];
       $apiParams['identifier'] = $this->_sourceData['kid_number'];
       $apiParams['identifier_type'] = 'KID';
+      $date = new DateTime($this->_sourceData['create_date']);
+      $apiParams['used_since'] = $date->format('Ymd');
       try {
         civicrm_api3('Contact', 'addidentity', $apiParams);
         return true;
