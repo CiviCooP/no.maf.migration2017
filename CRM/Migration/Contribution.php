@@ -98,8 +98,6 @@ class CRM_Migration_Contribution extends CRM_Migration_MAF {
       $this->_logger->logMessage('Error', 'Could not find recurring contribution for avtale contribution ID '.$this->_sourceData['id'].', not migrated');
       return FALSE;
     }
-    // set payment instrument to RCUR
-    $this->_contributionData['payment_instrument_id'] = "RCUR";
     try {
       $newContribution = civicrm_api3('Contribution', 'create', $this->_contributionData);
       return $newContribution['values'][$newContribution['id']];
@@ -131,23 +129,6 @@ class CRM_Migration_Contribution extends CRM_Migration_MAF {
         .$this->_sourceData['contact_id'].', contribution not migrated');
       return FALSE;
     }
-    // find payment instrument
-    try {
-      $count = civicrm_api3('OptionValue', 'getcount', array(
-        'option_group_id' => 'payment_instrument',
-        'value' => $this->_sourceData['payment_instrument_id'],
-      ));
-      if ($count == 0) {
-        $this->_logger->logMessage('Error', 'Could not find payment instrument ID ' . $this->_sourceData['payment_instrument_id']
-          . ' for contribution ID ' . $this->_sourceData['id'] . ', not migrated.');
-        return FALSE;
-      }
-    }
-    catch (CiviCRM_API3_Exception $ex) {
-      $this->_logger->logMessage('Error', 'Could not find payment instrument ID '.$this->_sourceData['payment_instrument_id']
-        .' for contribution ID '.$this->_sourceData['id'].', not migrated.');
-      return FALSE;
-    }
     // find contribution status
     try {
       $count = civicrm_api3('OptionValue', 'getcount', array(
@@ -177,7 +158,7 @@ class CRM_Migration_Contribution extends CRM_Migration_MAF {
     $this->_contributionData = array(
       'contact_id' => $this->_sourceData['contact_id'],
       'financial_type_id' => $config->getDefaultMandateFinancialTypeId(),
-      'payment_instrument_id' => $this->_sourceData['payment_instrument_id'],
+      'payment_instrument_id' => $this->getPaymentInstrument(),
       'receive_date' => $this->_sourceData['receive_date'],
       'currency' => $this->_sourceData['currency'],
       'contribution_status_id' => $this->_sourceData['contribution_status_id'],
@@ -198,5 +179,20 @@ class CRM_Migration_Contribution extends CRM_Migration_MAF {
       }
     }
     return;
+  }
+
+  private function getPaymentInstrument() {
+    switch($this->_sourceData['payment_instrument_id']) {
+      case '6': // SMS
+	 			return 9;
+	 			break;
+      case '31': // VIPPS
+         return 10;
+         break;
+      case '15': // Betalingskort
+         return 11;
+         break;
+    }
+    return 12; // Bank - Nettbank
   }
 }

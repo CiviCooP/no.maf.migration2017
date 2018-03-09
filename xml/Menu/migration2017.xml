@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<menu>
+  <item>
+    <path>civicrm/contribution/migrate</path>
+    <page_callback>CRM_Migration_Page_MigrateContribution</page_callback>
+    <title>Migrate contributions</title>
+    <access_arguments>administer CiviCRM</access_arguments>
+  </item>
+</menu>

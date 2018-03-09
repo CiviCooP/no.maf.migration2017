@@ -44,16 +44,17 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
   private function migratePrintedGiro() {
     $config = CRM_Mafsepa_Config::singleton();
     $startDate = new DateTime($this->_sourceData['start_date']);
+		$frequency_name = $this->_sourceData['frequency_interval'].' '.$this->_sourceData['frequency_unit'];
     try {
       $frequency = civicrm_api3('OptionValue', 'getvalue', array(
         'option_group_id' => 'maf_printed_giro_frequency',
-        'name' => $this->_sourceData['frequency_unit'],
+        'name' => $frequency_name,
         'return' => 'value',
       ));
     }
     catch (CiviCRM_API3_Exception $ex) {
       $frequency = 1;
-      $this->_logger->logMessage('Warning', 'Frequency '.$this->_sourceData['frequency_unit']
+      $this->_logger->logMessage('Warning', 'Frequency '.$frequency_name
         .' for printed giro ID '.$this->_sourceData['id'].' not found in CiviCRM, migrated as month! Needs to be checked');
     }
     $sqlParams =  array(
@@ -79,6 +80,7 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
       return array('entity_id' => $latest->id);
     }
     catch (Exception $ex) {
+    	$this->_logger->logMessage('Error', 'Could not migrate printed giro '.$ex->getMessage());
       return FALSE;
     }
   }
@@ -167,41 +169,41 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
     $creditor = CRM_Sepa_Logic_Settings::defaultCreditor();
     if (!empty($creditor)) {
       $config = CRM_Mafsepa_Config::singleton();
-      if (!empty($defaultCampaignId)) {
-        try {
-          $reference = $this->generateUniqueReference();
-          $mandateData = array(
-            'creditor_id' => $creditor->id,
-            'contact_id' => $this->_sourceData['contact_id'],
-            'financial_type_id' => 1,
-            'status' => 'RCUR',
-            'type' => $config->getDefaultMandateType(),
-            'currency' => $this->_sourceData['currency'],
-            'source' => '', // Keep this empty.
-            'reference' => $reference,
-            'kid' => $reference,
-            'frequency_interval' => $this->_sourceData['frequency_interval'],
-            'frequency_unit' => $this->_sourceData['frequency_unit'],
-            'amount' => $this->_sourceData['amount'],
-            'campaign_id' => $this->earmarkingToCampaign($this->_sourceData['earmarking']),
-            'cycle_day' => 21,
-          );
-          if (isset($this->_sourceData['start_date']) && !empty($this->_sourceData['start_date'])) {
-            $startDate = new DateTime($this->_sourceData['start_date']);
-            $mandateData['start_date'] = $startDate->format('d-m-Y');
-          }
-          if (isset($this->_sourceData['end_date']) && !empty($this->_sourceData['end_date'])) {
-            $endDate = new DateTime($this->_sourceData['end_date']);
-            $mandateData['end_date'] = $endDate->format('d-m-Y');
-          }
-          if (isset($this->_sourceData['create_date']) && !empty($this->_sourceData['create_date'])) {
-            $createDate = new DateTime($this->_sourceData['create_date']);
-            $mandateData['creation_date'] = $createDate->format('d-m-Y');
-            $mandateData['validation_date'] = $createDate->format('d-m-Y');
-          }
-        } catch (CiviCRM_API3_Exception $ex) {
+      try {
+      	$campaign_id = $this->earmarkingToCampaign($this->_sourceData['earmarking']);
+        $reference = $this->generateUniqueReference($campaign_id);
+        $mandateData = array(
+          'creditor_id' => $creditor->id,
+          'contact_id' => $this->_sourceData['contact_id'],
+          'financial_type_id' => 1,
+          'status' => 'RCUR',
+          'type' => $config->getDefaultMandateType(),
+          'currency' => $this->_sourceData['currency'],
+          'source' => '', // Keep this empty.
+          'reference' => $reference,
+          'kid' => $reference,
+          'frequency_interval' => $this->_sourceData['frequency_interval'],
+          'frequency_unit' => $this->_sourceData['frequency_unit'],
+          'amount' => $this->_sourceData['amount'],
+          'campaign_id' => $campaign_id,
+          'cycle_day' => 21,
+        );
+        if (isset($this->_sourceData['start_date']) && !empty($this->_sourceData['start_date'])) {
+          $startDate = new DateTime($this->_sourceData['start_date']);
+          $mandateData['start_date'] = $startDate->format('d-m-Y');
         }
-      }
+        if (isset($this->_sourceData['end_date']) && !empty($this->_sourceData['end_date'])) {
+          $endDate = new DateTime($this->_sourceData['end_date']);
+          $mandateData['end_date'] = $endDate->format('d-m-Y');
+        }
+        if (isset($this->_sourceData['create_date']) && !empty($this->_sourceData['create_date'])) {
+          $createDate = new DateTime($this->_sourceData['create_date']);
+          $mandateData['creation_date'] = $createDate->format('d-m-Y');
+          $mandateData['validation_date'] = $createDate->format('d-m-Y');
+        }
+      } catch (CiviCRM_API3_Exception $ex) {
+      	throw $ex;
+    }
     }
     return $mandateData;
   }
@@ -237,12 +239,11 @@ class CRM_Migration_ContributionRecur extends CRM_Migration_MAF {
    *
    * @return string
    */
-  private function generateUniqueReference() {
+  private function generateUniqueReference($campaign_id) {
     $config = CRM_Mafsepa_Config::singleton();
-    $defaultCampaignId = $config->getDefaultFundraisingCampaignId();
     $kid = civicrm_api3('Kid', 'generate', array(
       'contact_id' => $this->_sourceData['contact_id'],
-      'campaign_id' => $defaultCampaignId,
+      'campaign_id' => $campaign_id,
     ));
     $reference = $kid['kid_number'];
     // first check if mandate reference already exists and if so, add letter until it does not
